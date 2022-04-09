@@ -62,11 +62,7 @@ export default {
       const buffer = new Float32Array(this.fftSize) // this.dataArray
       this.analyser.getFloatTimeDomainData(buffer)
 
-      const offsetSums = new Array(this.fftSize).fill(0);
-      console.log(offsetSums)
-
-      const autoCorrelateValue = this.detectFrequency(buffer, this.audioContext.sampleRate)
-      console.log(autoCorrelateValue)
+      this.frequency = this.detectFrequency(buffer, this.audioContext.sampleRate).toFixed(1)
     },
     detectFrequency(buffer, sampleRate) {
       // Perform a quick root-mean-square to see if we have enough signal
