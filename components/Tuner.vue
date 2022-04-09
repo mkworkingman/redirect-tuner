@@ -33,36 +33,18 @@ export default {
     }
   },
   methods: {
-    run() {
-      this.audioContext = new (AudioContext || webkitAudioContext)();
-      this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1);
-      this.audioSource = this.audioContext.createMediaElementSource(this.$refs["track"]);
-      this.audioSource.connect(this.scriptProcessor);
-      this.audioSource.connect(this.audioContext.destination);
-      this.scriptProcessor.connect(this.audioContext.destination);
-
-      aubio().then(({ Pitch }) => {
-        const pitchDetector = new Pitch(
-          "default",
-          this.scriptProcessor.bufferSize,
-          this.scriptProcessor.bufferSize / 8,
-          this.audioContext.sampleRate
-        );
-        this.scriptProcessor.addEventListener("audioprocess", e => {
-
-          const data = e.inputBuffer.getChannelData(0);
-          const frequency = pitchDetector.do(data);
-          if (frequency) {
-            this.frequency = frequency.toFixed(1)
-          }
-          this.count += 1;
-        });
-      });
+    async setup() {
+      this.audioContext = new AudioContext()
+      const mic = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      })
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume()
+      }
     }
   },
-  mounted() {
-    this.audioUrl = this.fileName === '440' ? freq440hz : andante
-    this.$refs["track"].addEventListener("play", this.run);
+  async mounted() {
+    await this.setup()
   },
 }
 </script>

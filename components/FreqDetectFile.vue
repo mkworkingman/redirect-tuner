@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import aubio from "aubiojs";
+import aubio from "aubiojs"
 import andante from '@/assets/andante.mp3'
 import freq440hz from '@/assets/440hz.mp3'
 
@@ -21,7 +21,6 @@ export default {
       audioSource: null,
       audioContext: null,
       scriptProcessor: null,
-      count: 0,
       maxFrequency: 2000,
       bufferSize: 1 << 12,
       size: (1 << 12) / (1 << 10),
@@ -34,12 +33,12 @@ export default {
   },
   methods: {
     run() {
-      this.audioContext = new (AudioContext || webkitAudioContext)();
-      this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1);
-      this.audioSource = this.audioContext.createMediaElementSource(this.$refs["track"]);
-      this.audioSource.connect(this.scriptProcessor);
-      this.audioSource.connect(this.audioContext.destination);
-      this.scriptProcessor.connect(this.audioContext.destination);
+      this.audioContext = new (AudioContext || webkitAudioContext)()
+      this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1)
+      this.audioSource = this.audioContext.createMediaElementSource(this.$refs["track"])
+      this.audioSource.connect(this.scriptProcessor)
+      this.audioSource.connect(this.audioContext.destination)
+      this.scriptProcessor.connect(this.audioContext.destination)
 
       aubio().then(({ Pitch }) => {
         const pitchDetector = new Pitch(
@@ -47,22 +46,46 @@ export default {
           this.scriptProcessor.bufferSize,
           this.scriptProcessor.bufferSize / 8,
           this.audioContext.sampleRate
-        );
+        )
         this.scriptProcessor.addEventListener("audioprocess", e => {
 
-          const data = e.inputBuffer.getChannelData(0);
-          const frequency = pitchDetector.do(data);
-          if (frequency) {
-            this.frequency = frequency.toFixed(1)
-          }
-          this.count += 1;
-        });
-      });
+          const data = e.inputBuffer.getChannelData(0)
+          const frequency = pitchDetector.do(data)
+          if (frequency) this.frequency = frequency.toFixed(1)
+        })
+      })
     }
+    // run() {
+    //   this.audioContext = new (AudioContext || webkitAudioContext)()
+    //   this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1)
+    //   this.audioSource = this.audioContext.createMediaElementSource(this.$refs["track"])
+    //   this.audioSource.connect(this.scriptProcessor)
+    //   this.audioSource.connect(this.audioContext.destination)
+    //   this.scriptProcessor.connect(this.audioContext.destination)
+
+    //   aubio().then(({ Pitch }) => {
+    //     const pitchDetector = new Pitch(
+    //       "default",
+    //       this.scriptProcessor.bufferSize,
+    //       this.scriptProcessor.bufferSize / 8,
+    //       this.audioContext.sampleRate
+    //     )
+    //     this.scriptProcessor.addEventListener("audioprocess", e => {
+
+    //       const data = e.inputBuffer.getChannelData(0)
+    //       const frequency = pitchDetector.do(data)
+    //       if (frequency) {
+    //         this.frequency = frequency.toFixed(1)
+    //       }
+    //       this.count += 1
+    //     })
+    //   })
+    // }
   },
   mounted() {
+
     this.audioUrl = this.fileName === '440' ? freq440hz : andante
-    this.$refs["track"].addEventListener("play", this.run);
+    this.$refs["track"].addEventListener("play", this.run)
   },
 }
 </script>
