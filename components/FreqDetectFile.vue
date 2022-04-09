@@ -21,6 +21,7 @@ export default {
       audioSource: null,
       audioContext: null,
       scriptProcessor: null,
+      analyser: null,
       maxFrequency: 2000,
       bufferSize: 1 << 12,
       size: (1 << 12) / (1 << 10),
@@ -34,7 +35,9 @@ export default {
   methods: {
     run() {
       this.audioContext = new (AudioContext || webkitAudioContext)()
+      this.analyser = new AnalyserNode(this.audioContext, { fftSize: 256 })
       this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1)
+      // this.scriptProcessor = this.audioContext.createScriptProcessor(this.bufferSize, 1, 1)
       this.audioSource = this.audioContext.createMediaElementSource(this.$refs["track"])
       this.audioSource.connect(this.scriptProcessor)
       this.audioSource.connect(this.audioContext.destination)
@@ -48,8 +51,11 @@ export default {
           this.audioContext.sampleRate
         )
         this.scriptProcessor.addEventListener("audioprocess", e => {
+          console.log(e)
 
           const data = e.inputBuffer.getChannelData(0)
+          console.log(data)
+          console.log(this.scriptProcessor.bufferSize)
           const frequency = pitchDetector.do(data)
           if (frequency) this.frequency = frequency.toFixed(1)
         })
