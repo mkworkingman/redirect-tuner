@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2>Tuner:</h2>
-    <audio :src="this.audioUrl" ref="track" controls></audio>
+    <audio :src="this.audioUrl" ref="track" controls preload="none" type="audio/mp3"></audio>
     <h3>Frequency: {{this.frequency}} Hz</h3>
   </div>
 </template>
