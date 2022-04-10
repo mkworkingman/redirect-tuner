@@ -1,8 +1,7 @@
 <template>
   <div>
     <h2>Tuner:</h2>
-    <h3>Frequency: {{this.frequency}} Hz</h3>
-    <h3 v-show="!frequency">Please, play louder.</h3>
+    <h3>Frequency: {{this.frequency}} <span v-show="frequency">Hz</span></h3>
   </div>
 </template>
 
@@ -21,10 +20,7 @@ export default {
       source: null,
       fftSize: 2048,
       dataArray: null,
-      count: 0,
-      maxFrequency: 2000,
-      bufferSize: 1 << 12,
-      size: (1 << 12) / (1 << 10),
+      lastFrequencies: [],
 
       listening: true,
       keysSharp: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
@@ -36,9 +32,6 @@ export default {
     async setup() {
       this.audioContext = new AudioContext()
       this.analyser = new AnalyserNode(this.audioContext, { fftSize: this.fftSize })
-      this.analyser.minDecibels = -100
-      this.analyser.maxDecibels = -10
-      this.analyser.smoothingTimeConstant = 0.85
       this.mic = await navigator.mediaDevices.getUserMedia({
         audio: true
       })
@@ -50,19 +43,21 @@ export default {
 
       this.source = this.audioContext.createMediaStreamSource(this.mic)
       this.source.connect(this.analyser)
-
-      // this.analyser.connect(this.audioContext.destination)
     },
     test() {
       requestAnimationFrame(this.test)
-      const buffer = new Float32Array(this.fftSize) // this.dataArray
       this.analyser.getFloatTimeDomainData(this.dataArray)
 
-      // this.frequency = this.detectFrequency()
-      this.frequency = this.detectFrequency() || this.frequency
+      const currentFrequency = this.detectFrequency()
+
+      if (
+        currentFrequency &&
+        Math.round(Math.abs(currentFrequency - this.frequency)) >= 5
+      ) {
+        this.frequency = currentFrequency
+      }
     },
     detectFrequency() {
-      // Perform a quick root-mean-square to see if we have enough signal
       let buffer = this.dataArray
       let size = buffer.length
       let sumOfSquares = 0
@@ -75,12 +70,10 @@ export default {
         return 0
       }
 
-      // Find a range in the buffer where the values are below a given threshold.
       let r1 = 0
       let r2 = size - 1
       const threshold = 0.2
 
-      // Walk up for r1
       for (let i = 0; i < size / 2; i++) {
         if (Math.abs(buffer[i]) < threshold) {
           r1 = i
@@ -88,7 +81,6 @@ export default {
         }
       }
 
-      // Walk down for r2
       for (let i = 1; i < size / 2; i++) {
         if (Math.abs(buffer[size - i]) < threshold) {
           r2 = size - i
@@ -96,26 +88,21 @@ export default {
         }
       }
 
-      // Trim the buffer to these ranges and update size.
       buffer = buffer.slice(r1, r2)
       size = buffer.length
 
-      // Create a new array of the sums of offsets to do the autocorrelation
       const c = new Array(size).fill(0)
-      // For each potential offset, calculate the sum of each buffer value times its offset value
       for (let i = 0; i < size; i++) {
         for (let j = 0; j < size - i; j++) {
           c[i] = c[i] + buffer[j] * buffer[j+i]
         }
       }
 
-      // Find the last index where that value is greater than the next one (the dip)
       let d = 0
       while (c[d] > c[d+1]) {
         d++
       }
 
-      // Iterate from that index through the end and find the maximum sum
       let maxValue = -1
       let maxIndex = -1
       for (let i = d; i < size; i++) {
@@ -126,12 +113,6 @@ export default {
       }
 
       let T0 = maxIndex
-
-      // Not as sure about this part, don't @ me
-      // From the original author:
-      // interpolation is parabolic interpolation. It helps with precision. We suppose that a parabola pass through the
-      // three points that comprise the peak. 'a' and 'b' are the unknowns from the linear equation system and b/(2a) is
-      // the "error" in the abscissa. Well x1,x2,x3 should be y1,y2,y3 because they are the ordinates.
       const x1 = c[T0 - 1]
       const x2 = c[T0]
       const x3 = c[T0 + 1]
@@ -142,7 +123,7 @@ export default {
         T0 = T0 - b / (2 * a)
       }
 
-      return (this.audioContext.sampleRate/T0).toFixed(1)
+      return +(this.audioContext.sampleRate/T0).toFixed(1)
     }
   },
   async mounted() {
