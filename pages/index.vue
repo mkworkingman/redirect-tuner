@@ -8,8 +8,6 @@ import Vue from 'vue'
 export default Vue.extend({})
 </script>
 
-<style lang="postcss">
-  body {
-    background: darkgrey;
-  }
+<style lang="postcss" scoped>
+  
 </style>

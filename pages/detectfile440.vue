@@ -8,7 +8,7 @@ import Vue from 'vue'
 export default Vue.extend({})
 </script>
 
-<style lang="postcss">
+<style lang="postcss" scoped>
   body {
     background: darkgrey;
   }

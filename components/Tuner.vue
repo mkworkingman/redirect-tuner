@@ -1,8 +1,13 @@
 <template>
   <div>
     <h2>Tuner:</h2>
-    <h3>Frequency: {{this.frequency}} <span v-show="frequency">Hz</span></h3>
-    <p>{{this.beforeActiveNote}} {{this.activeNote}} {{this.afterActiveNote}}</p>
+    <h3>Frequency: {{frequency}} <span v-show="frequency">Hz</span></h3>
+    <p>{{beforeActiveNote}} {{activeNote}} {{afterActiveNote}}</p>
+    <p>{{currentColorName}}</p>
+    <canvas
+      @click="nextColor"
+      class="canvas" ref="canvas"></canvas>
+    <NuxtLink to="/metronome">To Metronome</NuxtLink>
   </div>
 </template>
 
@@ -21,6 +26,10 @@ export default {
       source: null,
       fftSize: 2048,
       dataArray: null,
+      equalizerDataArray: null,
+      equalizerColorsList: ['green', 'darkpurple', 'blacknwhite'],
+      equalizerCurrentColor: 0,
+
 
       listening: true,
       keysSharp: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
@@ -34,7 +43,17 @@ export default {
       frequenciesHistory: [],
       beforeActiveNote: null,
       activeNote: null,
-      afterActiveNote: null
+      afterActiveNote: null,
+
+      canvas: null,
+      c: null,
+      barWidth: 0,
+      amount: 40,
+    }
+  },
+  computed: {
+    currentColorName: function() {
+      return this.equalizerColorsList[this.equalizerCurrentColor]
     }
   },
   methods: {
@@ -49,6 +68,7 @@ export default {
       }
 
       this.dataArray = new Float32Array(this.fftSize)
+      this.equalizerDataArray = new Uint8Array(this.amount)
 
       this.source = this.audioContext.createMediaStreamSource(this.mic)
       this.source.connect(this.analyser)
@@ -56,6 +76,25 @@ export default {
     test() {
       requestAnimationFrame(this.test)
       this.analyser.getFloatTimeDomainData(this.dataArray)
+      this.analyser.getByteFrequencyData(this.equalizerDataArray)
+
+      this.c.clearRect(0, 0, window.innerWidth, window.innerHeight)
+
+      this.equalizerDataArray.forEach((item, index) => {
+      // this.equalizerDataArray.sort((a, b) => b - a).forEach((item, index) => {
+        const y = item / 2
+        const x = this.barWidth * index
+        if (this.currentColorName === 'green') {
+          this.c.fillStyle = `rgba(${0}, ${y}, ${y / 1.5}, 1)`
+        } else if (this.currentColorName === 'darkpurple') {
+          this.c.fillStyle = `rgba(${y / 2}, ${0}, ${y / 1.5}, 1)`
+        } else {
+          this.c.fillStyle = `rgba(${y}, ${y}, ${y}, 1)`
+        }
+
+        this.c.fillRect(x, window.innerHeight - y, this.barWidth, y)
+      })
+
 
       const currentFrequency = this.detectFrequency()
 
@@ -89,7 +128,7 @@ export default {
         sumOfSquares += val * val
       }
       const rootMeanSquare = Math.sqrt(sumOfSquares / size)
-      if (rootMeanSquare < 0.01) {
+      if (rootMeanSquare < 0.015) {
         return 0
       }
 
@@ -147,20 +186,46 @@ export default {
       }
 
       return +(this.audioContext.sampleRate/T0).toFixed(1)
+    },
+    getDimensions() {
+      console.log(window.innerWidth, window.innerHeight)
+    },
+    nextColor() {
+      if (this.equalizerCurrentColor < this.equalizerColorsList.length - 1) {
+        this.equalizerCurrentColor++
+      } else {
+        this.equalizerCurrentColor = 0
+      }
     }
   },
   async mounted() {
+    window.addEventListener('resize', this.getDimensions);
+
+    this.canvas = this.$refs.canvas
+    const width = window.innerWidth
+    const height = window.innerHeight
+    this.canvas.width = width * devicePixelRatio
+    this.canvas.height = height * devicePixelRatio
+    this.canvas.style.width = width + 'px'
+    this.canvas.style.height = height + 'px'
+    this.c = this.canvas.getContext('2d')
+    this.c.scale(devicePixelRatio, devicePixelRatio)
+    this.barWidth = window.innerWidth / 256
+  
     await this.setup()
     this.test()
   },
-  computed: {
-    getNote() {
-
-    }
-  }
+  unmounted() {
+    window.removeEventListener('resize', this.getDimensions);
+  },
 }
 </script>
 
 <style lang="postcss" scoped>
-
+  canvas.canvas {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+  }
 </style>
